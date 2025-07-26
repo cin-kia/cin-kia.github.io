@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login | Supabase Auth</title>
+
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- jQuery CDN -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+    <!-- React + ReactDOM CDN -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+
+    <!-- Babel for JSX support -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center h-screen">
+
+    <!-- This is where our React component will render -->
+    <div id="app" class="w-full max-w-md p-8 bg-white rounded shadow"></div>
+
+    <script type="text/babel">
+        const { useState } = React;
+
+        // Initialize Supabase client
+        const supabase = window.supabase.createClient(
+            'https://pxvxcbjzlzzggkkiehlv.supabase.co', // replace with your Supabase project URL
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4dnhjYmp6bHp6Z2dra2llaGx2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM1NDA4OTEsImV4cCI6MjA2OTExNjg5MX0.FDCKKYv5eTpoOtv3nTbptBHl2GfvAxYyiWpdNPvkktE' // replace with your Supabase anon public key
+        );
+
+        // LoginForm Component
+        const LoginForm = () => {
+            const [email, setEmail] = useState('');
+            const [password, setPassword] = useState('');
+            const [error, setError] = useState('');
+
+            const handleLogin = async (e) => {
+                e.preventDefault();
+                setError('');
+
+                if (!email || !password) {
+                    setError('Please provide email and password');
+                    return;
+                }
+
+                try {
+                    const { data, error: loginError } = await supabase.auth.signInWithPassword({
+                        email,
+                        password,
+                    });
+
+                    if (loginError) {
+                        setError(loginError.message);
+                        return;
+                    }
+
+                    // Save session in localStorage (this is optional, you can rely on cookies too)
+                    const session = data.session;
+                    if (session) {
+                        localStorage.setItem('supabase_session', JSON.stringify(session));
+                    }
+
+                    // Redirect to the dashboard after login
+                    window.location.href = '/index.html';
+                } catch (err) {
+                    setError(`Login failed: ${err.message}`);
+                }
+            };
+
+            return (
+                <form onSubmit={handleLogin} className="space-y-4">
+                    <h2 className="text-xl font-semibold">Login</h2>
+
+                    {/* Email */}
+                    <input
+                        type="email"
+                        placeholder="Email"
+                        className="w-full p-2 border rounded"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                    />
+
+                    {/* Password */}
+                    <input
+                        type="password"
+                        placeholder="Password"
+                        className="w-full p-2 border rounded"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                    />
+
+                    <button
+                        type="submit"
+                        className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+                    >
+                        Login
+                    </button>
+
+                    {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
+                </form>
+            );
+        };
+
+        // Render the login form
+        ReactDOM.createRoot(document.getElementById('app')).render(<LoginForm />);
+    </script>
+</body>
+</html>

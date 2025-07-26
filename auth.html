@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SPA | Supabase Auth</title>
+
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- React + ReactDOM CDN -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+
+    <!-- Babel for JSX support -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
+    <style>
+        /* Flip animation for the forms */
+        .flip-container {
+            perspective: 1000px;
+        }
+
+        .flip {
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+            position: relative;
+        }
+
+        .flip.reverse {
+            transform: rotateY(180deg);
+        }
+
+        .flip-card {
+            backface-visibility: hidden;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+
+        .flip-card-back {
+            transform: rotateY(180deg);
+        }
+
+        .button {
+            border: 1px solid #ddd;
+            background-color: transparent;
+            color: #007BFF;
+            padding: 8px 16px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+        }
+
+        .button:hover {
+            background-color: #007BFF;
+            color: white;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 flex items-center justify-center h-screen">
+
+    <div id="app" class="w-full max-w-md p-8 bg-white rounded shadow">
+        <div class="flip-container" id="flip-container">
+            <div class="flip">
+                <div class="flip-card">
+                    <!-- Login Form -->
+                    <div class="flip-card-front">
+                        <LoginForm onSwitchPage={switchPage} />
+                    </div>
+                </div>
+
+                <div class="flip-card">
+                    <!-- Register Form -->
+                    <div class="flip-card-back">
+                        <RegisterForm onSwitchPage={switchPage} />
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/babel">
+        const { useState } = React;
+        const baseurl = "http://127.0.0.1:5500";
+
+        // Initialize Supabase client
+        const supabase = window.supabase.createClient(
+            'https://pxvxcbjzlzzggkkiehlv.supabase.co', // replace with your Supabase project URL
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4dnhjYmp6bHp6Z2dra2llaGx2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM1NDA4OTEsImV4cCI6MjA2OTExNjg5MX0.FDCKKYv5eTpoOtv3nTbptBHl2GfvAxYyiWpdNPvkktE' // replace with your Supabase anon public key
+        );
+
+        const LoginForm = ({ onSwitchPage }) => {
+            const [email, setEmail] = useState('');
+            const [password, setPassword] = useState('');
+            const [error, setError] = useState('');
+            const [showForgotPassword, setShowForgotPassword] = useState(false);
+            const [resetEmail, setResetEmail] = useState('');
+            const [resetMessage, setResetMessage] = useState('');
+
+            const handleLogin = async (e) => {
+                e.preventDefault();
+                setError('');
+
+                if (!email || !password) {
+                    setError('Please provide email and password');
+                    return;
+                }
+
+                try {
+                    const { data, error: loginError } = await supabase.auth.signInWithPassword({
+                        email,
+                        password,
+                    });
+
+                    if (loginError) {
+                        setError(loginError.message);
+                        return;
+                    }
+
+                    localStorage.setItem('supabase_session', JSON.stringify(data.session));
+                    window.location.href = 'index.html'; // Redirect to the dashboard
+                } catch (err) {
+                    setError(`Login failed: ${err.message}`);
+                }
+            };
+
+            const handleForgotPassword = async (e) => {
+                e.preventDefault();
+                setResetMessage('');
+                setError('');
+
+                if (!resetEmail) {
+                    setError('Please enter your email to reset your password');
+                    return;
+                }
+
+                try {
+                    // Correct method to send password reset email
+                    const { error: resetError } = await supabase.auth.resetPasswordForEmail(resetEmail,{
+                        redirectTo: baseurl + '/reset-password.html',
+                    });
+
+                    if (resetError) {
+                        setError(resetError.message);
+                        return;
+                    }
+
+                    setResetMessage('Password reset link has been sent! Check your email.');
+                } catch (err) {
+                    setError(`Error: ${err.message}`);
+                }
+            };
+
+            const toggleForgotPassword = () => {
+                setShowForgotPassword(!showForgotPassword);
+                setError('');  // Clear any error messages
+                setResetMessage('');  // Clear reset message
+            };
+
+            return (
+                <div>
+                    {!showForgotPassword ? (
+                        <div>
+                            <h2 className="text-2xl font-semibold text-center">Login</h2>
+                            <form onSubmit={handleLogin} className="space-y-4">
+                                <input
+                                    type="email"
+                                    placeholder="Email"
+                                    className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    value={email}
+                                    onChange={(e) => setEmail(e.target.value)}
+                                    required
+                                />
+                                <input
+                                    type="password"
+                                    placeholder="Password"
+                                    className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    required
+                                />
+                                <button
+                                    type="submit"
+                                    className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-300"
+                                >
+                                    Login
+                                </button>
+                            </form>
+                            {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
+                            <button
+                                className="button mt-4 w-full text-center"
+                                onClick={onSwitchPage}
+                            >
+                                Go to Signup
+                            </button>
+
+                            <button
+                                className="button mt-2 w-full text-center"
+                                onClick={toggleForgotPassword}
+                            >
+                                Forgot Password?
+                            </button>
+                        </div>
+                    ) : (
+                        <div>
+                            <h2 className="text-2xl font-semibold text-center">Reset Password</h2>
+                            <form onSubmit={handleForgotPassword} className="space-y-4">
+                                <input
+                                    type="email"
+                                    placeholder="Enter your email"
+                                    className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                    value={resetEmail}
+                                    onChange={(e) => setResetEmail(e.target.value)}
+                                    required
+                                />
+                                <button
+                                    type="submit"
+                                    className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-300"
+                                >
+                                    Send Reset Link
+                                </button>
+                            </form>
+                            {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
+                            {resetMessage && <p className="text-green-500 text-sm mt-2">{resetMessage}</p>}
+                            <button
+                                className="button mt-4 w-full text-center"
+                                onClick={toggleForgotPassword}
+                            >
+                                Back to Login
+                            </button>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const RegisterForm = ({ onSwitchPage }) => {
+            const [email, setEmail] = useState('');
+            const [password, setPassword] = useState('');
+            const [username, setUsername] = useState('');
+            const [fullname, setFullname] = useState('');
+            const [error, setError] = useState('');
+            const [message, setMessage] = useState('');
+
+            const handleRegister = async (e) => {
+                e.preventDefault();
+                setError('');
+                setMessage('Registering...');
+                if (!email || !password || !username || !fullname) {
+                    setError('Please fill all required fields!');
+                    return;
+                }
+
+                try {
+                    const { data, error: signupError } = await supabase.auth.signUp({
+                        email,
+                        password,
+                    });
+
+                    if (signupError) throw signupError;
+
+                    const userId = data.user.id;
+
+                    // Insert user details into the 'users' table
+                    const { error: insertError } = await supabase.from('users').insert([{
+                        id: userId,
+                        username,
+                        fullname,
+                        email,
+                    }]);
+
+                    if (insertError) throw insertError;
+
+                    setMessage('Registration successful! Please check your email to confirm.');
+                } catch (err) {
+                    setError(`Error: ${err.message}`);
+                }
+            };
+
+            return (
+                <div>
+                    <h2 className="text-2xl font-semibold text-center">Signup</h2>
+                    <form onSubmit={handleRegister} className="space-y-4">
+                        <input
+                            type="text"
+                            placeholder="Username"
+                            className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
+                            required
+                        />
+                        <input
+                            type="text"
+                            placeholder="Fullname"
+                            className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            value={fullname}
+                            onChange={(e) => setFullname(e.target.value)}
+                            required
+                        />
+                        <input
+                            type="email"
+                            placeholder="Email"
+                            className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
+                            required
+                        />
+                        <input
+                            type="password"
+                            placeholder="Password"
+                            className="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            required
+                        />
+                        <button
+                            type="submit"
+                            className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition ease-in-out duration-300"
+                        >
+                            Signup
+                        </button>
+                    </form>
+                    {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
+                    {message && <p className="text-sm text-gray-700 mt-2">{message}</p>}
+                    <button
+                        className="button mt-4 w-full text-center"
+                        onClick={onSwitchPage}
+                    >
+                        Go to Login
+                    </button>
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [isLogin, setIsLogin] = useState(true);
+
+            const switchPage = () => {
+                setIsLogin(!isLogin);
+                const flipContainer = document.getElementById("flip-container");
+                flipContainer.querySelector(".flip").classList.toggle("reverse");
+            };
+
+            return isLogin ? <LoginForm onSwitchPage={switchPage} /> : <RegisterForm onSwitchPage={switchPage} />;
+        };
+
+        ReactDOM.render(<App />, document.getElementById('app'));
+    </script>
+</body>
+
+</html>

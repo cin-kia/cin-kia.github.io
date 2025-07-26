@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard | Supabase Auth</title>
+
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- jQuery CDN -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+    <!-- React + ReactDOM CDN -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+
+    <!-- Babel for JSX support -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+</head>
+<body class="bg-gray-100 flex items-center justify-center h-screen">
+
+    <!-- This is where the React component will be rendered -->
+    <div id="app" class="w-full max-w-md p-8 bg-white rounded shadow"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // Initialize Supabase client
+        const supabase = window.supabase.createClient(
+            'https://pxvxcbjzlzzggkkiehlv.supabase.co', // replace with your Supabase project URL
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4dnhjYmp6bHp6Z2dra2llaGx2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM1NDA4OTEsImV4cCI6MjA2OTExNjg5MX0.FDCKKYv5eTpoOtv3nTbptBHl2GfvAxYyiWpdNPvkktE' // replace with your Supabase anon public key
+        );
+
+        const Dashboard = () => {
+            const [user, setUser] = useState(null);
+            const [error, setError] = useState(null);
+            const [loading, setLoading] = useState(true);
+
+            useEffect(() => {
+                // Retrieve the session from localStorage
+                const session = JSON.parse(localStorage.getItem('supabase_session'));
+                if (!session) {
+                    window.location.href = 'login.html'; // Redirect if not logged in
+                    return;
+                }
+
+                // Get the logged-in user from the session
+                const userId = session.user.id;
+
+                // Fetch additional user details from the 'users' table
+                const fetchUserDetails = async () => {
+                    const { data, error } = await supabase
+                        .from('users')
+                        .select('fullname')
+                        .eq('id', userId)
+                        .single(); // Fetch one user by ID
+
+                    if (error) {
+                        setError(error.message);
+                    } else {
+                        setUser(data); // Save the user data, including fullname
+                    }
+
+                    setLoading(false);
+                };
+
+                fetchUserDetails();
+            }, []);
+
+            if (loading) {
+                return <div>Loading...</div>;
+            }
+
+            if (error) {
+                return <div>Error: {error}</div>;
+            }
+
+            return (
+                <div className="text-center">
+                    {/* Display the fullname */}
+                    <h1 className="text-2xl font-semibold">Hello, {user?.fullname || 'Guest'}</h1>
+                    <p className="mt-2">Welcome to the dashboard!</p>
+                    <button 
+                        className="mt-4 bg-red-600 text-white py-2 px-4 rounded"
+                        onClick={() => {
+                            localStorage.removeItem('supabase_session'); // Logout
+                            window.location.href = 'login.html'; // Redirect to login page
+                        }}
+                    >
+                        Logout
+                    </button>
+                </div>
+            );
+        };
+
+        // Render the Dashboard component
+        ReactDOM.createRoot(document.getElementById('app')).render(<Dashboard />);
+    </script>
+</body>
+</html>

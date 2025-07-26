@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Register | Supabase Auth</title>
+
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- jQuery CDN -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+    <!-- React + ReactDOM CDN -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+
+    <!-- Babel for JSX support -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+</head>
+
+<body class="bg-gray-100 flex items-center justify-center h-screen">
+
+    <div id="app" class="w-full max-w-md p-8 bg-white rounded shadow"></div>
+
+    <script type="text/babel">
+        const { useState } = React;
+
+        // Initialize Supabase client
+        const supabase = window.supabase.createClient(
+            'https://pxvxcbjzlzzggkkiehlv.supabase.co', // replace with your Supabase project URL
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB4dnhjYmp6bHp6Z2dra2llaGx2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM1NDA4OTEsImV4cCI6MjA2OTExNjg5MX0.FDCKKYv5eTpoOtv3nTbptBHl2GfvAxYyiWpdNPvkktE' // replace with your Supabase anon public key
+        );
+
+        const RegisterForm = () => {
+            const [email, setEmail] = useState('');
+            const [password, setPassword] = useState('');
+            const [username, setUsername] = useState('');
+            const [fullname, setFullname] = useState('');
+            const [mobile_number, setMobileNumber] = useState('');
+            const [address, setAddress] = useState('');
+            const [photo, setPhoto] = useState('');
+            const [message, setMessage] = useState('');
+            const [error, setError] = useState('');
+
+
+            const [photoBase64, setPhotoBase64] = useState('');
+
+            const handlePhotoUpload = (e) => {
+                const file = e.target.files[0];
+                if (!file) {
+                    console.log("No file selected");
+                    return;
+                }
+
+                console.log("File selected:", file.name);
+                const reader = new FileReader();
+
+                reader.onloadend = () => {
+                    console.log("Base64 result:", reader.result);  // Log the base64 string
+                    setPhotoBase64(reader.result); // This will be a base64 string
+                };
+
+                reader.readAsDataURL(file); // Read file as base64 data URI
+            };
+
+            const handleRegister = async (e) => {
+                e.preventDefault();
+                setMessage('Registering...');
+                setError('');
+
+                // Simple client-side validation
+                if (!email || !password || !username || !fullname) {
+                    setError('Please fill all required fields!');
+                    return;
+                }
+
+                try {
+                    // Step 1: Register the user with email and password
+                    const { data, error: signupError } = await supabase.auth.signUp({
+                        email,
+                        password,
+                    });
+
+                    if (signupError) throw signupError;
+
+                    const userId    = data.user.id;
+
+                    // Step 2: Insert user details into 'users' table
+                    const { error: insertError } = await supabase
+                        .from('users')
+                        .insert([{
+                            id: userId,
+                            username,
+                            fullname,
+                            email,
+                            mobile_number,
+                            address,
+                            photo: photoBase64,
+                        }]);
+
+                    if (insertError) throw insertError;
+
+                    setMessage('Registration successful! Please check your email to confirm.');
+                } catch (err) {
+                    setError(`Error: ${err.message}`);
+                }
+            };
+
+            return (
+                <form onSubmit={handleRegister} className="space-y-4">
+                    <h2 className="text-xl font-semibold">Register</h2>
+
+                    {/* Username */}
+                    <input
+                        type="text"
+                        placeholder="Username (max 20 characters)"
+                        className="w-full p-2 border rounded"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        required
+                        maxLength="20"
+                    />
+
+                    {/* Fullname */}
+                    <input
+                        type="text"
+                        placeholder="Fullname"
+                        className="w-full p-2 border rounded"
+                        value={fullname}
+                        onChange={(e) => setFullname(e.target.value)}
+                        required
+                        maxLength="100"
+                    />
+
+                    {/* Email */}
+                    <input
+                        type="email"
+                        placeholder="Email"
+                        className="w-full p-2 border rounded"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                        maxLength="100"
+                    />
+
+                    {/* Password */}
+                    <input
+                        type="password"
+                        placeholder="Password"
+                        className="w-full p-2 border rounded"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                    />
+
+                    {/* Mobile Number */}
+                    <input
+                        type="text"
+                        placeholder="Mobile Number (optional)"
+                        className="w-full p-2 border rounded"
+                        value={mobile_number}
+                        onChange={(e) => setMobileNumber(e.target.value)}
+                        maxLength="20"
+                    />
+
+                    {/* Address */}
+                    <textarea
+                        placeholder="Address (optional)"
+                        className="w-full p-2 border rounded"
+                        value={address}
+                        onChange={(e) => setAddress(e.target.value)}
+                    />
+
+                    {/* Photo Upload */}
+                    <input
+                        type="file"
+                        accept="image/*"
+                        className="w-full p-2 border rounded"
+                        onChange={handlePhotoUpload}
+                    />
+
+                    <button
+                        type="submit"
+                        className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
+                    >
+                        Register
+                    </button>
+
+                    {/* Error/Message */}
+                    {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
+                    {message && <p className="text-sm text-gray-700 mt-2">{message}</p>}
+                </form>
+            );
+        };
+
+        // Render the form
+        ReactDOM.createRoot(document.getElementById('app')).render(<RegisterForm />);
+    </script>
+</body>
+
+</html>
